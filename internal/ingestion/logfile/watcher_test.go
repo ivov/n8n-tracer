@@ -575,6 +575,17 @@ func Test_LogfileWatcher_DebounceDuration(t *testing.T) {
 	}
 
 	watcher.Stop()
+
+	// Wait for channels to be closed to ensure cleanup is complete
+	select {
+	case _, ok := <-eventCh:
+		assert.False(t, ok, "Event channel should be closed after Stop()")
+	case <-time.After(1 * time.Second):
+		t.Fatal("Event channel should be closed after Stop()")
+	}
+
+	// Give time for file handles to be released
+	time.Sleep(50 * time.Millisecond)
 }
 
 func Test_LogfileWatcher_InvalidWatchDirectory(t *testing.T) {
