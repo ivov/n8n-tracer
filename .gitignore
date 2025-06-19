@@ -1,0 +1,7 @@
+.DS_Store
+bin/*
+!**/.gitkeep
+coverage.html
+coverage.out
+n8n-tracer.state.json
+TODO.md

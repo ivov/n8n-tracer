@@ -1,0 +1,17 @@
+linters:
+  enable:
+    - govet # correctness
+    - errcheck # error handling
+    - staticcheck # static analysis
+    - gosec # security
+    - revive # best practices
+
+linters-settings:
+  revive:
+    rules:
+      - name: exported
+        disabled: true # allow import stutter
+
+run:
+  timeout: 1m
+  tests: true
