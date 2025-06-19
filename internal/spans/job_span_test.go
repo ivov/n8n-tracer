@@ -22,7 +22,7 @@ func Test_NewJobLifetimeSpan(t *testing.T) {
 	tracer := otel.Tracer("test")
 	ctx := context.Background()
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 
 	event := models.JobEnqueuedEvent{
 		Timestamp: startTime.Format(time.RFC3339Nano),
@@ -91,7 +91,7 @@ func Test_NewJobPendingSpan(t *testing.T) {
 
 	_, parentSpan := tracer.Start(ctx, "job.lifetime")
 
-	enqueuedTime := time.Now()
+	enqueuedTime := time.Now().UTC()
 	dequeuedTime := enqueuedTime.Add(500 * time.Millisecond)
 
 	event := models.JobDequeuedEvent{
@@ -180,7 +180,7 @@ func Test_NewJobProcessingSpan(t *testing.T) {
 
 	_, parentSpan := tracer.Start(ctx, "job.lifetime")
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 
 	event := models.JobDequeuedEvent{
 		Timestamp: startTime.Format(time.RFC3339Nano),
@@ -265,7 +265,7 @@ func Test_EndJobProcessingSpanOnStall(t *testing.T) {
 	tracer := otel.Tracer("test")
 	ctx := context.Background()
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 	stallTime := startTime.Add(200 * time.Millisecond)
 
 	_, span := tracer.Start(ctx, "job.processing", trace.WithTimestamp(startTime))
@@ -306,7 +306,7 @@ func Test_EndJobSpan(t *testing.T) {
 	tracer := otel.Tracer("test")
 	ctx := context.Background()
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 	endTime := startTime.Add(1 * time.Second)
 
 	_, span := tracer.Start(ctx, "job.lifetime", trace.WithTimestamp(startTime))
@@ -344,7 +344,7 @@ func Test_AddJobStalledEvent(t *testing.T) {
 	tracer := otel.Tracer("test")
 	ctx := context.Background()
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 	stallTime := startTime.Add(300 * time.Millisecond)
 
 	_, span := tracer.Start(ctx, "job.lifetime", trace.WithTimestamp(startTime))
@@ -413,7 +413,7 @@ func Test_JobPendingSpan_ValidTimestampsOnly(t *testing.T) {
 
 	_, parentSpan := tracer.Start(ctx, "job.lifetime")
 
-	enqueuedTime := time.Now()
+	enqueuedTime := time.Now().UTC()
 
 	event := models.JobDequeuedEvent{
 		Timestamp: "invalid-timestamp",
@@ -445,7 +445,7 @@ func Test_JobPendingSpan_ValidTimestampsOnly(t *testing.T) {
 	_, parentSpan2 := tracer.Start(ctx, "job.lifetime")
 
 	validEvent := models.JobDequeuedEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Payload: models.JobDequeuedPayload{
 			JobID: "job-456",
 			BasePayload: models.BasePayload{

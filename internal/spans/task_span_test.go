@@ -24,7 +24,7 @@ func Test_NewTaskSpan_WithParent(t *testing.T) {
 	_, parentSpan := tracer.Start(ctx, "node.executing")
 
 	event := models.RunnerTaskRequestedEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Payload: models.RunnerTaskRequestedPayload{
 			TaskID: "task-123",
 			NodeID: "node-32",
@@ -71,7 +71,7 @@ func Test_NewTaskSpan_WithoutParent(t *testing.T) {
 	ctx := context.Background()
 
 	event := models.RunnerTaskRequestedEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Payload: models.RunnerTaskRequestedPayload{
 			TaskID: "task-123",
 			NodeID: "node-923",
@@ -117,7 +117,7 @@ func Test_EndTaskSpan(t *testing.T) {
 	tracer := otel.Tracer("test")
 	ctx := context.Background()
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 	endTime := startTime.Add(50 * time.Millisecond)
 
 	_, span := tracer.Start(ctx, "task.executing", trace.WithTimestamp(startTime))
@@ -139,7 +139,7 @@ func Test_NewTaskSpan_WithTimestamp(t *testing.T) {
 	tracer := otel.Tracer("test")
 	ctx := context.Background()
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 
 	event := models.RunnerTaskRequestedEvent{
 		Timestamp: startTime.Format(time.RFC3339Nano),
@@ -212,7 +212,7 @@ func Test_NewTaskSpan_WithoutJobID(t *testing.T) {
 	ctx := context.Background()
 
 	event := models.RunnerTaskRequestedEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Payload: models.RunnerTaskRequestedPayload{
 			TaskID: "task-no-job",
 			NodeID: "node-712",

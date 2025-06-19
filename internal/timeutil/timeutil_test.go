@@ -20,14 +20,14 @@ func Test_ParseEventTime_ValidRFC3339(t *testing.T) {
 			expected:  time.Date(2025, 6, 9, 20, 0, 0, 0, time.UTC),
 		},
 		{
-			name:      "RFC3339 with timezone offset",
+			name:      "RFC3339 with positive timezone offset",
 			timestamp: "2025-06-09T20:00:00.000+05:00",
-			expected:  time.Date(2025, 6, 9, 20, 0, 0, 0, time.FixedZone("", 5*60*60)),
+			expected:  time.Date(2025, 6, 9, 15, 0, 0, 0, time.UTC),
 		},
 		{
 			name:      "RFC3339 with negative timezone offset",
 			timestamp: "2025-06-09T20:00:00.000-08:00",
-			expected:  time.Date(2025, 6, 9, 20, 0, 0, 0, time.FixedZone("", -8*60*60)),
+			expected:  time.Date(2025, 6, 10, 4, 0, 0, 0, time.UTC),
 		},
 		{
 			name:      "RFC3339 without milliseconds",

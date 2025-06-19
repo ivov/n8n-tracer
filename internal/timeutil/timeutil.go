@@ -8,5 +8,5 @@ func ParseEventTime(timestamp string) time.Time {
 		return time.Time{} // zero time indicates parsing failure
 	}
 
-	return eventTime
+	return eventTime.UTC()
 }

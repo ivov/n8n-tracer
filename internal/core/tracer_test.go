@@ -25,7 +25,7 @@ func Test_RegularMode_SuccessfulWorkflow(t *testing.T) {
 	executionID := "exec-happy-regular"
 	workflowID := "wf-jkl"
 	hostID := "host-main"
-	now := time.Now()
+	now := time.Now().UTC()
 	ts := func(offset int) string {
 		return now.Add(time.Duration(offset) * time.Millisecond).Format(time.RFC3339Nano)
 	}
@@ -120,7 +120,7 @@ func Test_RegularMode_FailedWorkflow(t *testing.T) {
 	executionID := "exec-fail-regular"
 	workflowID := "wf-mno"
 	hostID := "host-main"
-	now := time.Now()
+	now := time.Now().UTC()
 	ts := func(offset int) string {
 		return now.Add(time.Duration(offset) * time.Millisecond).Format(time.RFC3339Nano)
 	}
@@ -206,7 +206,7 @@ func Test_ScalingMode_SuccessfulJob(t *testing.T) {
 	jobID := "job-xyz"
 	hostID1 := "host-enqueue"
 	hostID2 := "host-process"
-	now := time.Now()
+	now := time.Now().UTC()
 	ts := func(offset int) string {
 		return now.Add(time.Duration(offset) * time.Millisecond).Format(time.RFC3339Nano)
 	}
@@ -323,7 +323,7 @@ func Test_ScalingMode_FailedJob(t *testing.T) {
 	workflowID := "wf-def"
 	jobID := "job-abc"
 	hostID := "host-process"
-	now := time.Now()
+	now := time.Now().UTC()
 	ts := func(offset int) string {
 		return now.Add(time.Duration(offset) * time.Millisecond).Format(time.RFC3339Nano)
 	}
@@ -430,7 +430,7 @@ func Test_ScalingMode_WorkflowStartedBeforeJobDequeued(t *testing.T) {
 	jobID := "job-ooo"
 	hostID1 := "host-enqueue"
 	hostID2 := "host-process"
-	now := time.Now()
+	now := time.Now().UTC()
 	ts := func(offset int) string {
 		return now.Add(time.Duration(offset) * time.Millisecond).Format(time.RFC3339Nano)
 	}
@@ -545,7 +545,7 @@ func Test_ScalingMode_StallingJob(t *testing.T) {
 	hostID1 := "host-enqueue"
 	hostID2_stalled := "host-process-stalled"
 	hostID3_resumed := "host-process-resumed"
-	now := time.Now()
+	now := time.Now().UTC()
 	ts := func(offset int) string {
 		return now.Add(time.Duration(offset) * time.Millisecond).Format(time.RFC3339Nano)
 	}
@@ -682,7 +682,7 @@ func Test_OutOfOrder_NodeFinishBeforeStart(t *testing.T) {
 	defer cleanup()
 
 	executionID := "exec-out-of-order-node"
-	now := time.Now()
+	now := time.Now().UTC()
 	ts := func(offset int) string {
 		return now.Add(time.Duration(offset) * time.Millisecond).Format(time.RFC3339Nano)
 	}
@@ -746,7 +746,7 @@ func Test_NodeStarted_WithoutWorkflowSpan_CreatesOrphan(t *testing.T) {
 	// ----------------
 
 	nodeStartedEvent := models.NodeStartedEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Payload:   models.NodeStartedPayload{NodeID: "node-612", NodeType: "n8n-nodes-base.test", BasePayload: models.BasePayload{ExecutionID: executionID, WorkflowID: "wf-123", HostID: "host-123"}},
 	}
 
@@ -761,7 +761,7 @@ func Test_NodeStarted_WithoutWorkflowSpan_CreatesOrphan(t *testing.T) {
 
 	// End the span to check its attributes
 	nodeFinishedEvent := models.NodeFinishedEvent{
-		Timestamp: time.Now().Add(100 * time.Millisecond).Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Add(100 * time.Millisecond).Format(time.RFC3339Nano),
 		Payload:   models.NodeFinishedPayload{NodeID: "node-612", NodeType: "n8n-nodes-base.test", BasePayload: models.BasePayload{ExecutionID: executionID, WorkflowID: "wf-123", HostID: "host-123"}},
 	}
 	err = h.Tracer.ProcessEvent(nodeFinishedEvent)
@@ -803,7 +803,7 @@ func Test_TaskStarted_WithoutNodeSpan_CreatesOrphan(t *testing.T) {
 	// ----------------
 
 	taskStartedEvent := models.RunnerTaskRequestedEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Payload:   models.RunnerTaskRequestedPayload{TaskID: taskID, NodeID: "node-901", BasePayload: models.BasePayload{ExecutionID: executionID, WorkflowID: "wf-123", HostID: "host-123"}},
 	}
 
@@ -817,7 +817,7 @@ func Test_TaskStarted_WithoutNodeSpan_CreatesOrphan(t *testing.T) {
 	assert.Equal(t, 1, h.Tracer.ExecutionStatesInMemory(), "Task span should be created in memory")
 
 	taskFinishedEvent := models.RunnerResponseReceivedEvent{
-		Timestamp: time.Now().Add(100 * time.Millisecond).Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Add(100 * time.Millisecond).Format(time.RFC3339Nano),
 		Payload:   models.RunnerResponseReceivedPayload{TaskID: taskID, NodeID: "node-901", BasePayload: models.BasePayload{ExecutionID: executionID, WorkflowID: "wf-123", HostID: "host-123"}},
 	}
 	err = h.Tracer.ProcessEvent(taskFinishedEvent)
@@ -857,7 +857,7 @@ func Test_ScalingMode_StalledJobCreatesRetroactiveWorkflowSpan(t *testing.T) {
 	hostID1 := "host-enqueue"
 	hostID2_stalled := "host-process-stalled"
 	hostID3_resumed := "host-process-resumed"
-	now := time.Now()
+	now := time.Now().UTC()
 	ts := func(offset int) string {
 		return now.Add(time.Duration(offset) * time.Millisecond).Format(time.RFC3339Nano)
 	}

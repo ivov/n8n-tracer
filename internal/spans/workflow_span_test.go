@@ -25,7 +25,7 @@ func Test_NewWorkflowSpan_WithParent(t *testing.T) {
 	_, parentSpan := tracer.Start(ctx, "job.processing")
 
 	event := models.WorkflowStartedEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Payload: models.WorkflowStartedPayload{
 			BasePayload: models.BasePayload{
 				ExecutionID: "exec-123",
@@ -67,7 +67,7 @@ func Test_NewWorkflowSpan_WithoutParent(t *testing.T) {
 	ctx := context.Background()
 
 	event := models.WorkflowStartedEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Payload: models.WorkflowStartedPayload{
 			BasePayload: models.BasePayload{
 				ExecutionID: "exec-123",
@@ -112,7 +112,7 @@ func Test_AddWorkflowSuccessAttributes(t *testing.T) {
 	_, span := tracer.Start(ctx, "workflow.executing")
 
 	event := models.WorkflowSuccessEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Payload: models.WorkflowSuccessPayload{
 			BasePayload: models.BasePayload{
 				ExecutionID: "exec-123",
@@ -142,7 +142,7 @@ func Test_AddWorkflowFailureAttributes(t *testing.T) {
 	_, span := tracer.Start(ctx, "workflow.executing")
 
 	event := models.WorkflowFailedEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Payload: models.WorkflowFailedPayload{
 			LastNodeExecuted: "FailingNode",
 			ErrorNodeType:    "n8n-nodes-base.httpRequest",
@@ -175,7 +175,7 @@ func Test_EndWorkflowSpan(t *testing.T) {
 	tracer := otel.Tracer("test")
 	ctx := context.Background()
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 	endTime := startTime.Add(100 * time.Millisecond)
 
 	_, span := tracer.Start(ctx, "workflow.executing", trace.WithTimestamp(startTime))
@@ -197,7 +197,7 @@ func Test_EndWorkflowSpanOnStall(t *testing.T) {
 	tracer := otel.Tracer("test")
 	ctx := context.Background()
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 	stallTime := startTime.Add(50 * time.Millisecond)
 
 	_, span := tracer.Start(ctx, "workflow.executing", trace.WithTimestamp(startTime))
@@ -241,7 +241,7 @@ func Test_NewWorkflowSpan_WithTimestamp(t *testing.T) {
 	tracer := otel.Tracer("test")
 	ctx := context.Background()
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 
 	event := models.WorkflowStartedEvent{
 		Timestamp: startTime.Format(time.RFC3339Nano),

@@ -25,7 +25,7 @@ func Test_NewNodeSpan_WithParent(t *testing.T) {
 	_, parentSpan := tracer.Start(ctx, "workflow.executing")
 
 	event := models.NodeStartedEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Payload: models.NodeStartedPayload{
 			NodeID:   "node-4",
 			NodeType: "n8n-nodes-base.httpRequest",
@@ -73,7 +73,7 @@ func Test_NewNodeSpan_WithoutParent(t *testing.T) {
 
 	// Create node started event
 	event := models.NodeStartedEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Payload: models.NodeStartedPayload{
 			NodeID:   "node-22",
 			NodeType: "n8n-nodes-base.test",
@@ -119,7 +119,7 @@ func Test_EndNodeSpan(t *testing.T) {
 	tracer := otel.Tracer("test")
 	ctx := context.Background()
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 	endTime := startTime.Add(75 * time.Millisecond)
 
 	_, span := tracer.Start(ctx, "node.executing", trace.WithTimestamp(startTime))
@@ -141,7 +141,7 @@ func Test_EndNodeSpanOnStall(t *testing.T) {
 	tracer := otel.Tracer("test")
 	ctx := context.Background()
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 	stallTime := startTime.Add(30 * time.Millisecond)
 
 	_, span := tracer.Start(ctx, "node.executing", trace.WithTimestamp(startTime))
@@ -183,7 +183,7 @@ func Test_NewNodeSpan_WithTimestamp(t *testing.T) {
 	tracer := otel.Tracer("test")
 	ctx := context.Background()
 
-	startTime := time.Now()
+	startTime := time.Now().UTC()
 
 	event := models.NodeStartedEvent{
 		Timestamp: startTime.Format(time.RFC3339Nano),
@@ -256,7 +256,7 @@ func Test_NewNodeSpan_WithoutJobID(t *testing.T) {
 	ctx := context.Background()
 
 	event := models.NodeStartedEvent{
-		Timestamp: time.Now().Format(time.RFC3339Nano),
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
 		Payload: models.NodeStartedPayload{
 			NodeID:   "node-71",
 			NodeType: "n8n-nodes-base.start",
