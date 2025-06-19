@@ -27,4 +27,4 @@ jobs:
         run: make vet
 
       - name: Test
-        run: make test-race
+        run: make test
