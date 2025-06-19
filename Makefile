@@ -1,4 +1,4 @@
-.PHONY: build clear docker/build lint lintfix fmt fmt-check githooks run test test-verbose test-coverage vet
+.PHONY: build clear docker/build lint lintfix fmt fmt-check githooks run test test-verbose test-coverage test-coverage-html vet
 
 build:
 	@go build -o bin cmd/main.go
@@ -40,7 +40,9 @@ test-verbose:
 	go test -race -v ./...
 
 test-coverage:
-	go test -coverprofile=coverage.out $(shell go list ./... | grep -v -E '/(internal/harness|cmd)$$')
+	go test -race -coverprofile=coverage.out -covermode=atomic $(shell go list ./... | grep -v -E '/(internal/harness|cmd)$$')
+
+test-coverage-html: test-coverage
 	go tool cover -html=coverage.out -o coverage.html
 	open coverage.html
 

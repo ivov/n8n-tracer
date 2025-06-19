@@ -26,5 +26,14 @@ jobs:
       - name: Vet
         run: make vet
 
-      - name: Test
-        run: make test
+      - name: Test with coverage
+        run: make test-coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ./coverage.out
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true

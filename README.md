@@ -2,7 +2,7 @@
 
 ![Memory](https://img.shields.io/badge/memory-14_MiB-blue)
 ![Image size](https://img.shields.io/badge/image_size-35_MiB-blue)
-![Test Coverage](https://img.shields.io/badge/test_coverage-82%25-darkgreen)
+[![codecov](https://codecov.io/gh/ivov/n8n-tracer/branch/main/graph/badge.svg)](https://codecov.io/gh/ivov/n8n-tracer)
 
 Construct OpenTelemetry traces from n8n event logs.
 
@@ -92,7 +92,7 @@ services:
     # ...
 
 volumes:
- n8n_data:
+  n8n_data:
 ```
 
 ### Environment variables
@@ -113,7 +113,7 @@ For ingestion via logfiles:
 | ------------------- | ------------------------------------------------------------------ | ----------------------- |
 | `WATCH_FILE_PATH`   | Path to n8n's event log file, typically `~/.n8n/n8nEventLog.log`   | **Required**            |
 | `STATE_FILE_PATH`   | Path to state file, where read position for log files is persisted | `n8n-tracer.state.json` |
-| `DEBOUNCE_DURATION` | How long to wait before processing logfile change events          | `1s`                    |
+| `DEBOUNCE_DURATION` | How long to wait before processing logfile change events           | `1s`                    |
 
 For ingestion via log streaming:
 
