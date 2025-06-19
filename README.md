@@ -2,7 +2,7 @@
 
 ![Memory](https://img.shields.io/badge/memory-14_MiB-blue)
 ![Image size](https://img.shields.io/badge/image_size-35_MiB-blue)
-[![codecov](https://codecov.io/gh/ivov/n8n-tracer/branch/main/graph/badge.svg)](https://codecov.io/gh/ivov/n8n-tracer)
+[![codecov](https://codecov.io/gh/ivov/n8n-tracer/graph/badge.svg?token=WDNLJ5O62W)](https://codecov.io/gh/ivov/n8n-tracer)
 
 Construct OpenTelemetry traces from n8n event logs.
 
