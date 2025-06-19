@@ -58,7 +58,7 @@ Sample span attributes:
 ## Getting started
 
 > [!IMPORTANT]
-> Requires n8n version `0.100.0` or higher
+> Requires n8n version `1.100.0` or higher
 
 Run `n8n-tracer` as a sidecar container in your n8n docker compose. Use env vars to configure `n8n-tracer` to receive events from event logs or HTTP requests, and export traces to your OTEL backend.
 
