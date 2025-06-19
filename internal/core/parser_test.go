@@ -317,3 +317,89 @@ func Test_Parser_ToEvent_ErrorCases(t *testing.T) {
 		})
 	}
 }
+
+func Test_Parser_ToEvent_UnmarshalFailures(t *testing.T) {
+	parser := core.NewParser()
+
+	tests := []struct {
+		name        string
+		logline     string
+		expectError bool
+	}{
+		{
+			name:        "JobEnqueued_InvalidPayloadStructure",
+			logline:     `{"ts":"2025-06-09T20:00:00.000Z","eventName":"n8n.queue.job.enqueued","payload":"invalid_string_payload"}`,
+			expectError: true,
+		},
+		{
+			name:        "JobDequeued_InvalidPayloadStructure",
+			logline:     `{"ts":"2025-06-09T20:00:00.000Z","eventName":"n8n.queue.job.dequeued","payload":123}`,
+			expectError: true,
+		},
+		{
+			name:        "JobCompleted_InvalidPayloadStructure",
+			logline:     `{"ts":"2025-06-09T20:00:00.000Z","eventName":"n8n.queue.job.completed","payload":"not_an_object"}`,
+			expectError: true,
+		},
+		{
+			name:        "JobFailed_InvalidPayloadStructure",
+			logline:     `{"ts":"2025-06-09T20:00:00.000Z","eventName":"n8n.queue.job.failed","payload":[]}`,
+			expectError: true,
+		},
+		{
+			name:        "JobStalled_InvalidPayloadStructure",
+			logline:     `{"ts":"2025-06-09T20:00:00.000Z","eventName":"n8n.queue.job.stalled","payload":false}`,
+			expectError: true,
+		},
+		{
+			name:        "WorkflowStarted_InvalidPayloadStructure",
+			logline:     `{"ts":"2025-06-09T20:00:00.000Z","eventName":"n8n.workflow.started","payload":"not_an_object"}`,
+			expectError: true,
+		},
+		{
+			name:        "WorkflowSuccess_InvalidPayloadStructure",
+			logline:     `{"ts":"2025-06-09T20:00:00.000Z","eventName":"n8n.workflow.success","payload":42}`,
+			expectError: true,
+		},
+		{
+			name:        "WorkflowFailed_InvalidPayloadStructure",
+			logline:     `{"ts":"2025-06-09T20:00:00.000Z","eventName":"n8n.workflow.failed","payload":true}`,
+			expectError: true,
+		},
+		{
+			name:        "NodeStarted_InvalidPayloadStructure",
+			logline:     `{"ts":"2025-06-09T20:00:00.000Z","eventName":"n8n.node.started","payload":"invalid"}`,
+			expectError: true,
+		},
+		{
+			name:        "NodeFinished_InvalidPayloadStructure",
+			logline:     `{"ts":"2025-06-09T20:00:00.000Z","eventName":"n8n.node.finished","payload":"invalid_string"}`,
+			expectError: true,
+		},
+		{
+			name:        "RunnerTaskRequested_InvalidPayloadStructure",
+			logline:     `{"ts":"2025-06-09T20:00:00.000Z","eventName":"n8n.runner.task.requested","payload":123.45}`,
+			expectError: true,
+		},
+		{
+			name:        "RunnerResponseReceived_InvalidPayloadStructure",
+			logline:     `{"ts":"2025-06-09T20:00:00.000Z","eventName":"n8n.runner.response.received","payload":123}`,
+			expectError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			event, err := parser.ToEvent([]byte(tt.logline))
+
+			if tt.expectError {
+				require.Error(t, err)
+				assert.Nil(t, event)
+				return
+			}
+
+			require.NoError(t, err)
+			assert.NotNil(t, event)
+		})
+	}
+}

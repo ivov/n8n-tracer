@@ -1,6 +1,7 @@
 package core_test
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
@@ -993,4 +994,175 @@ func Test_ScalingMode_StalledJobCreatesRetroactiveWorkflowSpan(t *testing.T) {
 
 	assert.Equal(t, secondJobProcessingSpan.SpanContext().SpanID(), secondWorkflowSpan.Parent().SpanID(),
 		"Synthetic workflow span should be child of second job.processing span")
+}
+
+func Test_Tracer_StartGC_ContextCancellation(t *testing.T) {
+	h, cleanup := harness.NewTestHarness(t)
+	defer cleanup()
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	gcDone := make(chan bool)
+	go func() {
+		h.Tracer.StartGC(ctx, 1*time.Hour, 10*time.Millisecond)
+		gcDone <- true
+	}()
+
+	time.Sleep(20 * time.Millisecond)
+	cancel()
+
+	select {
+	case <-gcDone:
+		// Expected - GC should exit when context is cancelled
+	case <-time.After(100 * time.Millisecond):
+		t.Fatal("GC should have stopped when context was cancelled")
+	}
+}
+
+func Test_Tracer_ClearStaleSpans_WithStaleExecution(t *testing.T) {
+	h, cleanup := harness.NewTestHarness(t)
+	defer cleanup()
+
+	executionID := "exec-will-be-stale"
+
+	workflowEvent := models.WorkflowStartedEvent{
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		Payload:   models.WorkflowStartedPayload{BasePayload: models.BasePayload{ExecutionID: executionID, WorkflowID: "wf-1", HostID: "host-1"}},
+	}
+
+	nodeEvent := models.NodeStartedEvent{
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		Payload:   models.NodeStartedPayload{NodeID: "node-1", NodeType: "n8n-nodes-base.test", BasePayload: models.BasePayload{ExecutionID: executionID, WorkflowID: "wf-1", HostID: "host-1"}},
+	}
+
+	taskEvent := models.RunnerTaskRequestedEvent{
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		Payload:   models.RunnerTaskRequestedPayload{TaskID: "task-1", NodeID: "node-1", BasePayload: models.BasePayload{ExecutionID: executionID, WorkflowID: "wf-1", HostID: "host-1"}},
+	}
+
+	// Process events to create spans
+	err := h.Tracer.ProcessEvent(workflowEvent)
+	require.NoError(t, err)
+
+	err = h.Tracer.ProcessEvent(nodeEvent)
+	require.NoError(t, err)
+
+	err = h.Tracer.ProcessEvent(taskEvent)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, h.Tracer.ExecutionStatesInMemory())
+
+	// Use very short threshold to trigger GC
+	staleThreshold := 1 * time.Millisecond
+	gcInterval := 5 * time.Millisecond
+
+	// Sleep to make execution stale
+	time.Sleep(5 * time.Millisecond)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	go h.Tracer.StartGC(ctx, staleThreshold, gcInterval)
+	time.Sleep(20 * time.Millisecond)
+
+	// Should have cleared all stale executions
+	assert.Equal(t, 0, h.Tracer.ExecutionStatesInMemory())
+
+	// Should have ended the spans
+	endedSpans := h.SpanRecorder.Ended()
+	assert.GreaterOrEqual(t, len(endedSpans), 3, "Should have ended at least workflow, node, and task spans")
+
+	cancel()
+}
+
+func Test_Tracer_ClearStaleSpans_NoStaleExecutions(t *testing.T) {
+	h, cleanup := harness.NewTestHarness(t)
+	defer cleanup()
+
+	executionID := "exec-fresh"
+
+	workflowEvent := models.WorkflowStartedEvent{
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		Payload:   models.WorkflowStartedPayload{BasePayload: models.BasePayload{ExecutionID: executionID, WorkflowID: "wf-1", HostID: "host-1"}},
+	}
+
+	err := h.Tracer.ProcessEvent(workflowEvent)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, h.Tracer.ExecutionStatesInMemory())
+
+	// Use long threshold so execution is not stale
+	staleThreshold := 1 * time.Hour
+	gcInterval := 5 * time.Millisecond
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+
+	go h.Tracer.StartGC(ctx, staleThreshold, gcInterval)
+	time.Sleep(20 * time.Millisecond)
+
+	// Should not have cleared anything since execution is not stale
+	assert.Equal(t, 1, h.Tracer.ExecutionStatesInMemory())
+
+	cancel()
+}
+
+func Test_Tracer_ClearStaleSpans_WithJobSpans(t *testing.T) {
+	// Create tracer with scaling mode to test job span cleanup
+	originalTP := otel.GetTracerProvider()
+	defer otel.SetTracerProvider(originalTP)
+
+	sr := tracetest.NewSpanRecorder()
+	tp := trace.NewTracerProvider(trace.WithSpanProcessor(sr))
+	otel.SetTracerProvider(tp)
+
+	testCfg := config.N8NConfig{
+		DeploymentMode:      "scaling",
+		Version:             "test",
+		WorkflowStartOffset: 50 * time.Millisecond,
+	}
+
+	tracer := core.NewTracer(testCfg)
+
+	executionID := "exec-with-job"
+
+	jobEvent := models.JobEnqueuedEvent{
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		Payload:   models.JobEnqueuedPayload{JobID: "job-1", BasePayload: models.BasePayload{ExecutionID: executionID, WorkflowID: "wf-1", HostID: "host-1"}},
+	}
+
+	dequeuedEvent := models.JobDequeuedEvent{
+		Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+		Payload:   models.JobDequeuedPayload{JobID: "job-1", BasePayload: models.BasePayload{ExecutionID: executionID, WorkflowID: "wf-1", HostID: "host-2"}},
+	}
+
+	err := tracer.ProcessEvent(jobEvent)
+	require.NoError(t, err)
+
+	err = tracer.ProcessEvent(dequeuedEvent)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, tracer.ExecutionStatesInMemory())
+
+	// Use very short threshold to trigger GC
+	staleThreshold := 1 * time.Millisecond
+	gcInterval := 5 * time.Millisecond
+
+	// Sleep to make execution stale
+	time.Sleep(5 * time.Millisecond)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+
+	go tracer.StartGC(ctx, staleThreshold, gcInterval)
+	time.Sleep(20 * time.Millisecond)
+
+	// Should have cleared stale execution
+	assert.Equal(t, 0, tracer.ExecutionStatesInMemory())
+
+	// Should have ended job spans
+	endedSpans := sr.Ended()
+	assert.GreaterOrEqual(t, len(endedSpans), 2, "Should have ended job lifetime and processing spans")
+
+	cancel()
 }
