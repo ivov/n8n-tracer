@@ -101,7 +101,7 @@ volumes:
 | ----------------------------- | ------------------------------------------------------------------------------ | ----------------------- |
 | `N8N_DEPLOYMENT_MODE`         | n8n deployment mode, either `regular` or `scaling`                             | **Required**            |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | OTLP HTTP collector endpoint, to export traces to                              | `http://localhost:4318` |
-| `N8N_VERSION`                 | n8n version, added to trace metadata                                           | `1.97.0`                |
+| `N8N_VERSION`                 | n8n version, added to trace metadata                                           | `1.100.0`                |
 | `HEALTH_PORT`                 | Health check server port                                                       | `8888`                  |
 | `STALE_SPAN_THRESHOLD`        | Max age for unclosed spans                                                     | `24h`                   |
 | `SPAN_GC_INTERVAL`            | How often to GC unclosed spans                                                 | `1h`                    |
