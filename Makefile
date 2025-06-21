@@ -1,4 +1,4 @@
-.PHONY: build clear docker/build lint lintfix fmt fmt-check githooks run test test-verbose test-coverage test-coverage-html vet
+.PHONY: build clear docker/build lint lintfix fmt fmt-check githooks run test test-docs test-summary test-verbose test-coverage test-coverage-html vet
 
 build:
 	@go build -o bin cmd/main.go
@@ -35,6 +35,12 @@ run: build
 
 test:
 	go test -race ./...
+
+test-docs:
+	gotestsum --format gotestdox -- -race ./...
+
+test-summary:
+	gotestsum -- -race ./...
 
 test-verbose:
 	go test -race -v ./...
