@@ -1,4 +1,3 @@
-// internal/app/app.go
 package app
 
 import (
@@ -6,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ivov/n8n-tracer/internal/config"
@@ -22,6 +22,17 @@ type App struct {
 	tracer          *core.Tracer
 	ingester        ingestion.Ingester
 	exporterCleanup func()
+	metrics         *Metrics
+}
+
+type Metrics struct {
+	eventsProcessed      atomic.Int64
+	lastEventProcessedAt atomic.Value // time.Time
+}
+
+func (a *App) GetMetrics() (int64, time.Time, int) {
+	lastAt, _ := a.metrics.lastEventProcessedAt.Load().(time.Time)
+	return a.metrics.eventsProcessed.Load(), lastAt, a.tracer.ExecutionStatesInMemory()
 }
 
 func New(cfg config.Config, tracer *core.Tracer) (*App, error) {
@@ -61,6 +72,7 @@ func New(cfg config.Config, tracer *core.Tracer) (*App, error) {
 		tracer:          tracer,
 		ingester:        ingester,
 		exporterCleanup: cleanup,
+		metrics:         &Metrics{},
 	}, nil
 }
 
@@ -87,7 +99,7 @@ func (a *App) Run(ctx context.Context) error {
 	// ensuring all background tasks have terminated before the program exits.
 	var wg sync.WaitGroup
 
-	srv := health.InitHealthCheckServer(a.cfg.Health.Port)
+	srv := health.InitHealthCheckServer(a.cfg.Health.Port, a)
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -116,6 +128,9 @@ func (a *App) Run(ctx context.Context) error {
 			}
 			if err := a.tracer.ProcessEvent(event); err != nil {
 				log.Printf("Failed to process event: %v", err)
+			} else {
+				a.metrics.eventsProcessed.Add(1)
+				a.metrics.lastEventProcessedAt.Store(time.Now())
 			}
 		case err, ok := <-errorChan:
 			if !ok {

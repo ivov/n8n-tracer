@@ -15,9 +15,12 @@ const (
 	writeTimeout    = 1 * time.Second
 )
 
-// InitHealthCheckServer creates and starts the tracer's health check server.
-func InitHealthCheckServer(port string) *http.Server {
-	srv := newHealthCheckServer(port)
+type MetricsProvider interface {
+	GetMetrics() (eventsProcessed int64, lastEventAt time.Time, execsInMemory int)
+}
+
+func InitHealthCheckServer(port string, provider MetricsProvider) *http.Server {
+	srv := newHealthCheckServer(port, provider)
 	go func() {
 		log.Printf("Starting health check server at port %s", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -35,9 +38,10 @@ func InitHealthCheckServer(port string) *http.Server {
 	return srv
 }
 
-func newHealthCheckServer(port string) *http.Server {
+func newHealthCheckServer(port string, metricsProvider MetricsProvider) *http.Server {
 	mux := http.NewServeMux()
-	mux.HandleFunc(healthCheckPath, handleHealthCheck)
+	handler := makeHealthCheckHandler(metricsProvider)
+	mux.HandleFunc(healthCheckPath, handler)
 
 	return &http.Server{
 		Addr:         fmt.Sprintf(":%s", port),
@@ -47,21 +51,36 @@ func newHealthCheckServer(port string) *http.Server {
 	}
 }
 
-func handleHealthCheck(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		return
-	}
+func makeHealthCheckHandler(provider MetricsProvider) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			w.WriteHeader(http.StatusMethodNotAllowed)
+			return
+		}
 
-	w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Type", "application/json")
 
-	res := struct {
-		Status string `json:"status"`
-	}{Status: "ok"}
+		eventsProcessed, lastAt, execsInMemory := provider.GetMetrics()
 
-	if err := json.NewEncoder(w).Encode(res); err != nil {
-		log.Printf("Failed to encode health check response: %v", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		res := struct {
+			Status               string `json:"status"`
+			LastEventProcessedAt string `json:"last_event_processed_at,omitempty"`
+			EventsProcessed      int64  `json:"events_processed_since_last_startup"`
+			ExecsInMemory        int    `json:"executions_in_memory"`
+		}{
+			Status:          "ok",
+			EventsProcessed: eventsProcessed,
+			ExecsInMemory:   execsInMemory,
+		}
+
+		if !lastAt.IsZero() {
+			res.LastEventProcessedAt = lastAt.Format(time.RFC3339)
+		}
+
+		if err := json.NewEncoder(w).Encode(res); err != nil {
+			log.Printf("Failed to encode health check response: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 	}
 }
