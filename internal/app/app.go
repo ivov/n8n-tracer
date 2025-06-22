@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
+	"net/http"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -99,14 +101,29 @@ func (a *App) Run(ctx context.Context) error {
 	// ensuring all background tasks have terminated before the program exits.
 	var wg sync.WaitGroup
 
-	srv := health.InitHealthCheckServer(a.cfg.Health.Port, a)
+	healthCheckServer := health.NewHealthCheckServer(a.cfg.Health.Port, a)
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		log.Printf("Starting health check server on %s", healthCheckServer.Addr)
+
+		if err := healthCheckServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			if opErr, ok := err.(*net.OpError); ok && opErr.Op == "listen" {
+				log.Printf("Health check server failed to start: Port %s is already in use", healthCheckServer.Addr)
+			} else {
+				log.Printf("Health check server failed to start: %v", err)
+			}
+		}
+	}()
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		if err := srv.Shutdown(shutdownCtx); err != nil {
+		if err := healthCheckServer.Shutdown(shutdownCtx); err != nil {
 			log.Printf("Health server shutdown error: %v", err)
 		}
 	}()

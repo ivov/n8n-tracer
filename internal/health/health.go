@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"net"
 	"net/http"
 	"time"
 )
@@ -19,28 +18,9 @@ type MetricsProvider interface {
 	GetMetrics() (eventsProcessed int64, lastEventAt time.Time, execsInMemory int)
 }
 
-func InitHealthCheckServer(port string, provider MetricsProvider) *http.Server {
-	srv := newHealthCheckServer(port, provider)
-	go func() {
-		log.Printf("Starting health check server at port %s", port)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			errMsg := "Health check server failed to start"
-			if opErr, ok := err.(*net.OpError); ok && opErr.Op == "listen" {
-				errMsg = fmt.Sprintf("%s: Port %s is already in use", errMsg, srv.Addr)
-			} else {
-				errMsg = fmt.Sprintf("%s: %s", errMsg, err)
-			}
-			log.Print(errMsg)
-			return
-		}
-	}()
-
-	return srv
-}
-
-func newHealthCheckServer(port string, metricsProvider MetricsProvider) *http.Server {
+func NewHealthCheckServer(port string, provider MetricsProvider) *http.Server {
 	mux := http.NewServeMux()
-	handler := makeHealthCheckHandler(metricsProvider)
+	handler := makeHandler(provider)
 	mux.HandleFunc(healthCheckPath, handler)
 
 	return &http.Server{
@@ -51,7 +31,7 @@ func newHealthCheckServer(port string, metricsProvider MetricsProvider) *http.Se
 	}
 }
 
-func makeHealthCheckHandler(provider MetricsProvider) http.HandlerFunc {
+func makeHandler(provider MetricsProvider) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			w.WriteHeader(http.StatusMethodNotAllowed)

@@ -54,7 +54,7 @@ func TestHealthCheckHandler(t *testing.T) {
 			req := httptest.NewRequest(tt.method, "/healthz", nil)
 			w := httptest.NewRecorder()
 
-			handler := makeHealthCheckHandler(provider)
+			handler := makeHandler(provider)
 			handler(w, req)
 
 			assert.Equal(t, tt.expectedStatus, w.Code, "unexpected status code")
@@ -88,7 +88,7 @@ func TestHealthCheckHandlerEncodingError(t *testing.T) {
 		headers: http.Header{},
 	}
 
-	handler := makeHealthCheckHandler(mockProvider)
+	handler := makeHandler(mockProvider)
 	handler(failingWriter, req)
 
 	assert.Equal(t, http.StatusInternalServerError, failingWriter.statusCode,
@@ -113,26 +113,15 @@ func (w *failingWriter) WriteHeader(statusCode int) {
 }
 
 func TestNewHealthCheckServer(t *testing.T) {
+	port := "0"
 	provider := &mockMetricsProvider{}
-	server := newHealthCheckServer("5680", provider)
+
+	server := NewHealthCheckServer(port, provider)
 
 	require.NotNil(t, server, "server should not be nil")
-
-	assert.Equal(t, ":5680", server.Addr, "unexpected server address")
+	assert.Equal(t, ":0", server.Addr, "unexpected server address")
 	assert.Equal(t, readTimeout, server.ReadTimeout, "unexpected read timeout")
 	assert.Equal(t, writeTimeout, server.WriteTimeout, "unexpected write timeout")
-}
-
-func TestInitHealthCheckServer(t *testing.T) {
-	port := "0" // let the OS choose an available port
-	provider := &mockMetricsProvider{}
-
-	InitHealthCheckServer(port, provider)
-
-	time.Sleep(10 * time.Millisecond)
-
-	// The test verifies that InitHealthCheckServer does not panic
-	// and returns immediately, since it starts the server in a goroutine.
 }
 
 func TestHealthCheckHandler_NoEventsProcessed(t *testing.T) {
@@ -145,7 +134,7 @@ func TestHealthCheckHandler_NoEventsProcessed(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	w := httptest.NewRecorder()
 
-	handler := makeHealthCheckHandler(provider)
+	handler := makeHandler(provider)
 	handler(w, req)
 
 	assert.Equal(t, http.StatusOK, w.Code)
