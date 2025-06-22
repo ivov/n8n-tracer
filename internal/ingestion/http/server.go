@@ -27,8 +27,8 @@ type HTTPIngestorServer struct {
 func NewHTTPIngestorServer(cfg config.HTTPIngestorConfig) *HTTPIngestorServer {
 	server := &HTTPIngestorServer{
 		parser:  core.NewParser(),
-		eventCh: make(chan interface{}, 100),
-		errCh:   make(chan error, 10),
+		eventCh: make(chan interface{}, 10_000), // to adjust based on real-world usage
+		errCh:   make(chan error, 100),
 		stopCh:  make(chan struct{}),
 	}
 
@@ -102,10 +102,12 @@ func (s *HTTPIngestorServer) handleIngest(w http.ResponseWriter, r *http.Request
 		select {
 		case s.eventCh <- event:
 			w.WriteHeader(http.StatusOK)
+		case <-time.After(30 * time.Second):
+			// Time out after 30s if event channel is full - prevents indefinite blocking
+			// while giving the tracer time to catch up with events backlog
+			http.Error(w, "Processing timeout - too many events", http.StatusRequestTimeout)
 		case <-s.stopCh:
 			http.Error(w, "Server shutting down", http.StatusServiceUnavailable)
-		default:
-			http.Error(w, "Event channel full", http.StatusServiceUnavailable)
 		}
 	} else {
 		w.WriteHeader(http.StatusOK)

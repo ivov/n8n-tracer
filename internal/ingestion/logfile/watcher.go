@@ -49,8 +49,8 @@ func NewLogfileWatcher(cfg config.Config, sm *StateManager) (*LogfileWatcher, er
 		watcher:          watcher,
 		parser:           core.NewParser(),
 		locator:          NewLogfileLocator(logDir, baseFileName),
-		eventCh:          make(chan interface{}),
-		errCh:            make(chan error),
+		eventCh:          make(chan interface{}, 1000),
+		errCh:            make(chan error, 100),
 		closeCh:          make(chan struct{}),
 		debounceDuration: cfg.LogfileIngestor.DebounceDuration,
 	}, nil
