@@ -38,7 +38,7 @@ func (a *App) GetMetrics() (int64, time.Time, int) {
 }
 
 func New(cfg config.Config, tracer *core.Tracer) (*App, error) {
-	cleanup, err := exporter.SetupExporter(cfg)
+	exporterCleanup, err := exporter.SetupExporter(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set up exporter: %w", err)
 	}
@@ -49,13 +49,13 @@ func New(cfg config.Config, tracer *core.Tracer) (*App, error) {
 	case "regular":
 		stateManager, err := logfile.NewStateManager(cfg.LogfileIngestor.StateFilePath)
 		if err != nil {
-			cleanup()
+			exporterCleanup()
 			return nil, fmt.Errorf("failed to initialize state manager: %w", err)
 		}
 
 		watcher, err := logfile.NewLogfileWatcher(cfg, stateManager)
 		if err != nil {
-			cleanup()
+			exporterCleanup()
 			return nil, fmt.Errorf("failed to initialize logfile watcher: %w", err)
 		}
 		ingester = watcher
@@ -65,7 +65,7 @@ func New(cfg config.Config, tracer *core.Tracer) (*App, error) {
 		ingester = server
 
 	default:
-		cleanup()
+		exporterCleanup()
 		return nil, fmt.Errorf("invalid deployment mode: %s (must be 'regular' or 'scaling')", cfg.N8N.DeploymentMode)
 	}
 
@@ -73,7 +73,7 @@ func New(cfg config.Config, tracer *core.Tracer) (*App, error) {
 		cfg:             cfg,
 		tracer:          tracer,
 		ingester:        ingester,
-		exporterCleanup: cleanup,
+		exporterCleanup: exporterCleanup,
 		metrics:         &Metrics{},
 	}, nil
 }
@@ -99,6 +99,21 @@ func (a *App) Run(ctx context.Context) error {
 	//
 	// 5. Once the `WaitGroup` counter reaches zero, `wg.Wait()` unblocks. This allows `app.Run` to return,
 	// ensuring all background tasks have terminated before the program exits.
+
+	// Shutdown sequence
+	//
+	// t=0ms:  SIGINT/SIGTERM received
+	// t=1ms:  Signal handler catches signal -> Cancels context -> `ctx.Done()` in all goroutines
+	// t=2ms:  │
+	//         ├── Main loop: `a.ingester.Stop()`
+	//         ├── Health server: `srv.Shutdown()`
+	//         ├── GC: exits
+	//         └── Ingester: stops watching or listening
+	// t=5ms:  Ingester closes `eventCh` and `errorCh`
+	// t=6ms:  Main loop detects closed channels -> Calls `wg.Wait()` to wait for all goroutines to finish
+	// t=10ms: All goroutines finish -> `wg.Wait()` unblocks
+	//
+	// t=11ms: App.Run() returns → exporterCleanup() -> main() exits → "Completed graceful shutdown"
 	var wg sync.WaitGroup
 
 	healthCheckServer := health.NewHealthCheckServer(a.cfg.Health.Port, a)

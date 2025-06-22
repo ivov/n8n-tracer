@@ -1,4 +1,3 @@
-// internal/ingestion/http/server.go
 package http
 
 import (
@@ -25,24 +24,24 @@ type HTTPIngestorServer struct {
 }
 
 func NewHTTPIngestorServer(cfg config.HTTPIngestorConfig) *HTTPIngestorServer {
-	server := &HTTPIngestorServer{
+	srv := &HTTPIngestorServer{
 		parser:  core.NewParser(),
-		eventCh: make(chan interface{}, 10_000), // to adjust based on real-world usage
+		eventCh: make(chan interface{}, 10_000), // TODO: Adjust buffer based on real-world usage
 		errCh:   make(chan error, 100),
 		stopCh:  make(chan struct{}),
 	}
 
 	mux := http.NewServeMux()
-	mux.HandleFunc("/ingest", server.handleIngest)
+	mux.HandleFunc("/ingest", srv.handleIngest)
 
-	server.server = &http.Server{
+	srv.server = &http.Server{
 		Addr:         fmt.Sprintf(":%s", cfg.Port),
 		Handler:      mux,
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 10 * time.Second,
 	}
 
-	return server
+	return srv
 }
 
 func (s *HTTPIngestorServer) Start(ctx context.Context) (<-chan interface{}, <-chan error) {
@@ -98,18 +97,19 @@ func (s *HTTPIngestorServer) handleIngest(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	if event != nil {
-		select {
-		case s.eventCh <- event:
-			w.WriteHeader(http.StatusOK)
-		case <-time.After(30 * time.Second):
-			// Time out after 30s if event channel is full - prevents indefinite blocking
-			// while giving the tracer time to catch up with events backlog
-			http.Error(w, "Processing timeout - too many events", http.StatusRequestTimeout)
-		case <-s.stopCh:
-			http.Error(w, "Server shutting down", http.StatusServiceUnavailable)
-		}
-	} else {
+	if event == nil {
 		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	select {
+	case s.eventCh <- event:
+		w.WriteHeader(http.StatusOK)
+	case <-time.After(30 * time.Second):
+		// Time out after 30s if event channel is full - prevents indefinite blocking
+		// while giving the tracer time to catch up with events backlog
+		http.Error(w, "Processing timeout - too many events", http.StatusRequestTimeout)
+	case <-s.stopCh:
+		http.Error(w, "Server shutting down", http.StatusServiceUnavailable)
 	}
 }

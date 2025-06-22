@@ -35,7 +35,7 @@ func NewJobLifetimeSpan(
 
 // NewJobPendingSpan creates a span for the time a job spent in the queue.
 //
-// Most spans have simple start and end events, but a job pending span can start
+// Most spans have simple start and end events, but a `job.pending` span can start
 // on enqueuing _or_ on stalling, so a queue span is created retroactively on dequeuing.
 func NewJobPendingSpan(
 	spanCtx SpanContext,
