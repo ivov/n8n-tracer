@@ -88,11 +88,11 @@ func (a *App) Run(ctx context.Context) error {
 	//
 	// 1. A shutdown signal (e.g., Ctrl+C) cancels the main `context`.
 	//
-	// 2. The main loop's `select` statement detects `<-ctx.Done()` and calls `a.watcher.Stop()`,
+	// 2. The main loop's `select` statement detects `<-ctx.Done()` and calls `a.ingester.Stop()`,
 	//    which in turn closes the `eventChan`. Meanwhile, the other goroutines have also
 	//    detected `<-ctx.Done()` and have begun their own shutdown procedures.
 	//
-	// 3. The main loop then detects the closed `eventChan`, meaning that the watcher has finished.
+	// 3. The main loop then detects the closed `eventChan`, meaning that the ingester has finished.
 	//
 	// 4. The main loop then calls `wg.Wait()`, so we wait for the other goroutines (GC and health server)
 	//    to call `wg.Done()`.
@@ -135,6 +135,7 @@ func (a *App) Run(ctx context.Context) error {
 	}()
 
 	eventChan, errorChan := a.ingester.Start(ctx)
+	shutdownStarted := false
 
 	for {
 		select {
@@ -156,8 +157,11 @@ func (a *App) Run(ctx context.Context) error {
 			}
 			log.Printf("Ingestion error: %v", err)
 		case <-ctx.Done():
-			log.Println("Shutdown signal received")
-			a.ingester.Stop()
+			if !shutdownStarted {
+				log.Println("Shutdown signal received")
+				a.ingester.Stop()
+				shutdownStarted = true
+			}
 		}
 	}
 }
