@@ -21,7 +21,7 @@ Sample trace:
 
 ## How it works
 
-In scaling mode, `n8n-tracer` listens at `/ingest` for HTTP requests sent by n8n instances via [log streaming](https://docs.n8n.io/log-streaming/), generates OTEL traces from those requests, and exports them to your OTEL backend. Out-of-order events are sequenced correctly.
+In scaling mode, `n8n-tracer` listens at `/ingest` for HTTP POST requests sent by n8n instances via [log streaming](https://docs.n8n.io/log-streaming/), generates OTEL traces from those requests, and exports them to your OTEL backend. Out-of-order events are sequenced correctly.
 
 Trace structure in scaling mode:
 
